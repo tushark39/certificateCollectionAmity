@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React,{useState,useEffect} from 'react'
 import IsUploading from './IsUploading';
 const Form=()=>{
@@ -13,9 +14,10 @@ const Form=()=>{
     const [serverCall,setServerCall] = useState({
         isUploading:false,
         uploaded : false,
-        errorMessage : null
+        errorMessage : null,
+        success : ""
     })
-    const {isUploading,uploaded,errorMessage}=serverCall;
+    const {isUploading,uploaded,errorMessage,success}=serverCall;
     const [achievment,setAchievment] = useState({
         courseName:"",
         organisation:""
@@ -32,15 +34,23 @@ const Form=()=>{
             file:event.target.files[0]
         })
       }; 
-    const onSubmit = (event)=>{
-        event.preventDefault();
-        console.log('candidateDetail : ',candidateDetail);
-        console.log('Achivement : ',achievment);
-        console.log('File  : ',selectedFile.file);
-        if (name!==""&&amityEmail!==""&&email!==""&&courseName!==""&&organisation!==""&&selectedFile.file!==null) {
-            setServerCall({...serverCall,isUploading:true,errorMessage:""});
-            setInterval(()=>{ 
-                setServerCall({...serverCall,isUploading:false,errorMessage:"Form Uploaded"}); 
+    const imageUpload=()=>{
+        const data = new FormData();
+        data.append('file',selectedFile.file)
+        data.append('upload_preset','UserProfile')
+        data.append("cloud_name","dd0txohwe")
+        axios.post('https://api.cloudinary.com/v1_1/dd0txohwe/image/upload',data)
+        .then(res=>{
+            axios.post('https://newsapp-api-admin.herokuapp.com/form/api',{
+                "name":name,
+                "email":email,
+                "amityEmail":amityEmail,
+                "courseName":courseName,
+                "organisation":organisation,
+                "imageLink":res.data.url
+            })
+            .then(()=>{
+                setServerCall({...serverCall,isUploading:false,errorMessage:null,success:"Form Uploaded"}); 
                 setcandidateDetail({
                     name:"",
                     amityEmail:"",
@@ -50,41 +60,82 @@ const Form=()=>{
                     courseName:"",
                     organisation:""
                 })
-            }, 3000);
-            setSelectedFile({
-                file:null
+                setSelectedFile({
+                    file:null
+                })
             })
+            .catch(error=>alert("Request failed, Please contact system organisation with error : ",error))
+        })
+        .catch(()=>{
+            setServerCall({...serverCall,isUploading:false,errorMessage:"Invalid File type selected!!"}); 
+                setcandidateDetail({
+                    name:"",
+                    amityEmail:"",
+                    email:""
+                });
+                setAchievment({
+                    courseName:"",
+                    organisation:""
+                })
+                setSelectedFile({
+                    file:null
+                })
+        })
+    }
+    const onSubmit = (event)=>{
+        event.preventDefault();
+        
+        // console.log('candidateDetail : ',candidateDetail);
+        // console.log('Achivement : ',achievment);
+        // console.log('File  : ',selectedFile.file);
+        if (name!==""&&amityEmail!==""&&email!==""&&courseName!==""&&organisation!==""&&selectedFile.file!==null) {
+            setServerCall({...serverCall,isUploading:true,errorMessage:""});
+            imageUpload()
+            
         } 
         else if(name===""){
             // alert("You have not entered your name");
             setServerCall({...serverCall,errorMessage:"You have not entered your name"})
+            document.getElementById("form").scrollIntoView()
         }
         else if(amityEmail===""){
             // alert("You have not entered your Amity Email");
             setServerCall({...serverCall,errorMessage:"You have not entered your Amity Email"})
+            document.getElementById("form").scrollIntoView()
+
 
         }
         else if(email===""){
             // alert("You have not entered your Email")
             setServerCall({...serverCall,errorMessage:"You have not entered your Email"})
+            document.getElementById("form").scrollIntoView()
+
         }
         else if(courseName===""){
             // alert("You have not entered Course Name")
             setServerCall({...serverCall,errorMessage:"You have not entered Course Name"})
+            document.getElementById("form").scrollIntoView()
+
 
         }
         else if(organisation===""){
             // alert("You have not entered your Issuing Organisation")
             setServerCall({...serverCall,errorMessage:"You have not entered your Issuing Organisation"})
+            document.getElementById("form").scrollIntoView()
+
 
         }
         else if(selectedFile.file===null){
             // alert("You have not selected any file")
             setServerCall({...serverCall,errorMessage:"You have not selected any file"})
+            document.getElementById("form").scrollIntoView()
+
 
         }
         else{
              alert("Error")
+            document.getElementById("form").scrollIntoView()
+
         }
         
 
@@ -95,7 +146,12 @@ const Form=()=>{
                 <div className="col-md-12">
                    {
                        isUploading!=true &&  <div className="form-style-5">
-                           <div style={{marginTop:20,marginBottom:20}}>{errorMessage}</div>
+                           {
+                               errorMessage!==null && <div className="alert alert-danger" role="alert" style={{marginTop:20,marginBottom:20}}>{errorMessage}</div>
+                           }  
+                           {
+                               success!="" && <div className="alert alert-success" role="alert" style={{marginTop:20,marginBottom:20}}>{success}</div>
+                           }
                        <form>
                            <fieldset>
                                <legend><span className="number">1</span> Candidate Info</legend>
@@ -118,7 +174,7 @@ const Form=()=>{
                                   {selectedFile.file.lastModifiedDate.toDateString()} 
                                   </p> 
                               </div>
-                          }
+                         }
                            </fieldset>
                            <input type="submit" defaultValue="Apply" onClick={onSubmit}/>
                        </form>
